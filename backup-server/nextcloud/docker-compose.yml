@@ -1,0 +1,45 @@
+services:
+  db:
+    image: postgres:17-alpine
+    container_name: nextcloud-db
+    restart: unless-stopped
+    environment:
+      - POSTGRES_DB=${POSTGRES_DB}
+      - POSTGRES_USER=${POSTGRES_USER}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+      - TZ=${TZ}
+    volumes:
+      - /data/db/nextcloud:/var/lib/postgresql/data
+    networks: [ nc-internal ]
+
+  redis:
+    image: redis:8-alpine
+    container_name: nextcloud-redis
+    restart: unless-stopped
+    command: [ "redis-server", "--appendonly", "yes" ]
+    networks: [ nc-internal ]
+
+  nextcloud:
+    image: nextcloud:apache
+    container_name: nextcloud
+    restart: unless-stopped
+    depends_on:
+      - db
+      - redis
+    ports:
+      - "8080:80"
+    environment:
+      - TZ=${TZ}
+      # Enable these later when configuring Traefik and Redis
+      # - NEXTCLOUD_TRUSTED_DOMAINS=${NEXTCLOUD_TRUSTED_DOMAINS}
+      # - REDIS_HOST=redis
+    volumes:
+      - /data/nextcloud-app/config:/var/www/html/config
+      - /data/nextcloud-app/custom_apps:/var/www/html/custom_apps
+      - /data/nextcloud-app/themes:/var/www/html/themes
+      - /data/nextcloud-files:/var/www/html/data
+    networks: [ nc-internal ]
+
+networks:
+  nc-internal:
+    driver: bridge
